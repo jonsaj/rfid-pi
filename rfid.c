@@ -1,6 +1,26 @@
 #include <stdio.h>
-#include <bcm2835.h>
+//#include <bcm2835.h>
+#include <wiringPiSPI.h>
+#include <unistd.h>
 
+int main(){
+	int fd = wiringPiSPISetup(0,1000000);
+	if(fd < 0) return 1;
+	printf("FD is %i\n",fd);
+	unsigned char data = 'a';
+	int i = 0;
+	for(i=0;i<30;i++){
+		wiringPiSPIDataRW(0,&data,1);
+		printf("data is 0x%02x %c\n",data,data);
+		if(data) data += 0x1;
+		else data = 'A';
+		usleep(500000);
+	}
+	return 0;
+}
+
+
+/*
 int main(){
 	if(!bcm2835_init())
 	{
@@ -36,3 +56,4 @@ int main(){
 	bcm2835_close();
 	return 0;
 }
+*/
