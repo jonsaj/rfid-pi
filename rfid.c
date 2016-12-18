@@ -3,10 +3,59 @@
 #include <wiringPiSPI.h>
 #include <unistd.h>
 
-int main(){
-	int fd = wiringPiSPISetup(0,1000000);
-	if(fd < 0) return 1;
-	printf("FD is %i\n",fd);
+//register definitions
+#define REG_BITFRAMING	0x0D;
+#define REG_COMIRQ	0x04;
+#define REG_COMIRQEN	0x02;
+#define REG_COMMAND	0x01;
+#define REG_ERROR	0x06;
+#define REG_FIFODATA	0x09;
+#define REG_FIFOLEVEL	0x0A;
+#define REG_MODE	0x11;
+#define REG_RXMODE	0x13;
+#define REG_TIMERMODE	0x2A;
+#define REG_TIMERSCALE	0x2B;
+#define REG_TIMERRLH	0x2C;
+#define REG_TIMERRLL	0x2D;
+#define REG_TXASK	0x15;
+#define REG_TXCONTROL	0x14;
+#define REG_TXMODE	0x12;
+#define REG_VERSION	0x37;
+
+//Commands
+//pcd
+#define COMM_IDLE	0x00;
+#define COMM_MEM	0x01;
+#define COMM_GENRANDID	0x02;
+#define COMM_CALCCRC	0x03;
+#define COMM_TRANSMIT	0x04;
+#define COMM_NOCMDCHG	0x07;
+#define COMM_RECEIVE	0x08;
+#define COMM_TRANSVE	0x0C;
+
+
+#define COMM_MIFAUTH	0x0E;
+
+#define COMM_SOFTRESET	0x15;
+
+//picc
+#define COMM_ANTICOLL_1	0x93;
+#define COMM_ANTICOLL_2	0x20;
+#define COMM_AUTHKEY_A	0x60;
+#define COMM_AUTHKEY_B	0x61;
+#define COMM_HALT_1	0x50;
+#define COMM_READ	0x30;
+#define COMM_REQUEST	0x26;
+#define COMM_SELECT_1	0x93;
+#define COMM_SELECT_2	0x70;
+#define	COMM_WRITE	0xA0;
+
+//picc responses
+#define RESP_ANSRQ	0x04;
+#define RESP_SELECTACK	0x08;
+#define RESP_ACK	0x0A;
+
+void selfTest(){
 	unsigned char data = 'a';
 	int i = 0;
 	for(i=0;i<30;i++){
@@ -15,45 +64,17 @@ int main(){
 		if(data) data += 0x1;
 		else data = 'A';
 		usleep(500000);
-	}
-	return 0;
+	}	
 }
 
-
-/*
 int main(){
-	if(!bcm2835_init())
-	{
-		printf("bcm2835_init failed. Root maybe?\n");
-		return 1;	
-	}
-	
-	if(!bcm2835_spi_begin())
-	{
-		printf("bcm2835_spi_begin failed. Root maybe?\n");
+
+	int fd = wiringPiSPISetup(0,1000000);
+	if(fd < 0){
+		printf("SPI init failed!\n");
 		return 1;
 	}
-	printf("began spi\n");
-	bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);
-	printf("set bir order\n");
-	bcm2835_spi_setDataMode(BCM2835_SPI_MODE0); 
-	printf("set data mode\n");
-	bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_65536);
-	printf("set clock divider\n");
-	bcm2835_spi_chipSelect(BCM2835_SPI_CS0);
-	printf("set chipselect\n");
-	bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);
-	printf("set chip select polarity\n");
-
-	// Send a byte to the slave and simultaneously read a byte back from the slave
-	// If you tie MISO to MOSI, you should read back what was sent
-	uint8_t send_data = 0x23;
-	uint8_t read_data = bcm2835_spi_transfer(send_data);
-	printf("Sent to SPI: 0x%02X. Read back from SPI: 0x%02X.\n", send_data, read_data);
-	if (send_data != read_data)
-  		printf("Do you have the loopback from MOSI to MISO connected?\n");
-	bcm2835_spi_end();
-	bcm2835_close();
+	selfTest();
 	return 0;
 }
-*/
+
