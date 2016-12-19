@@ -61,6 +61,10 @@
 #define RESP_SELECTACK	0x08
 #define RESP_ACK	0x0A
 
+void writeToSPIChannel(char *data, short numBytes){
+	wiringPiSPIDataRW(SPI_CHANNEL,data,numBytes);
+}
+
 void setRead(char *data){
 	data[0] = data[0] & 0xff;
 }
@@ -70,7 +74,8 @@ void setWrite(char *data){
 }
 
 void setAddr(char *data, const char addr){
-	data[0] = (data[0] & 0x81) | (0x81 | (addr << 1));	
+	clearLSB(data);
+	data[0] = (data[0] & 0x81) | (0x81 | (addr << 1));
 }
 
 void clearLSB(char *data){
@@ -78,6 +83,8 @@ void clearLSB(char *data){
 }
 
 void setComm(char *data, const char comm){
+	setAddr(data, REG_COMMAND);
+	setWrite(data);
 	data[1] = (data[1] & ~(0xF)) & (0xF & comm);
 }
 
@@ -104,7 +111,6 @@ void piSelfTest(){
 	unsigned char data = 'a';
 	int i = 0;
 	for(i=0;i<30;i++){
-		wiringPiSPIDataRW(SPI_CHANNEL,&data,1);
 		printf("data is 0x%02x %c\n",data,data);
 		if(data) data += 0x1;
 		else data = 'A';
@@ -116,9 +122,8 @@ void getVersion(){
 	unsigned char data;
 	setRead(&data);
 	setAddr(&data, REG_VERSION);
-	clearLSB(&data);
-	wiringPiSPIDataRW(SPI_CHANNEL, &data, 1);
-	wiringPiSPIDataRW(SPI_CHANNEL, &data, 1);
+	writeToSPI(&data, 1);
+	writeToSPI(&data, 1);
 	if(data >> 4 == 0x9) {
 		printf("ChipType: MFRC522\n");
 	} else {
@@ -128,40 +133,85 @@ void getVersion(){
 }
 
 void softReset(){
-	unsigned char data;
-	clearLSB(&data);
-	setWrite(&data);
-	setAddr(&data,REG_COMMAND);
-	setComm(&data,COMM_SOFTRESET);
-	wiringPiSPIDataRW(SPI_CHANNEL, &data, 2);
+	unsigned char data[2];
+	data[0] = data[1] = 0x0;
+
+	setComm(data,COMM_SOFTRESET);
+	writeToSPI(&data, 2);
 	//usleep(500000); //unsure if sleep needed after softreset
 	//considering that commandReg register has a PowerDown
 	// soft power down field, I think no delay is needed
 }
 
+void resetFIFOBuffer(){
+	unsigned char data[2];
+	data[0] = data[1] = 0;
+	setAddr(data,REG_FIFOLEVEL);
+	setWrite(data);
+
+	//set FlushBuffer bit (7) to 1
+	data[1] = data[1] & (0x1 << 7);
+	writeToSPI(data,2);
+}
+
+void copyFIFOIntoBuffer(){
+	unsigned char data[2];
+	data[0] = data[1] = 0;
+
+	setComm(data,COMM_MEM);
+
+	writeToSPI(data,2);
+}
+
 void clearInternalBuffer(){
-//clear FIFO buffer
-	//setAddr(&data,
-	setComm(&data, COMM_MEM);
-	wiringPiSPIDataRW(SPI_CHANNEL, &data, 1);
+	resetFIFOBuffer();
+
+	unsigned char data[2];
+	data[0] = data[1] = 0x0;
+
+	setComm(data, COMM_MEM);
+
+	writeToSPI(data, 2);
 }
 
 void rfidSelfTest(){
 	softReset();
-	clearBuffer();
+	clearInternalBuffer();
 
 	unsigned short testBytesCount = 64;
 	unsigned char data[testBytesCount];
 	data[0] = 0x0;
-	setAddr(&data,REG_AUTOTEST);
-	setWrite(&data);
-	clearLSB(&data);
+
+	setAddr(data,REG_AUTOTEST);
+	setWrite(data);
+
 	data[1] = data[1] & TEST_SELFTEST;
-	int i;
-	for(i=0;i<testBytesCount;i++){
-		wiringPiSPIDataRW(SPI_CHANNEL, &data, testBytesCount);	
+	writeToSPI(data,2);
+
+	data[0] = data[1] = 0x0;
+	setAddr(data,REG_COMMAND);
+	setWrite(data);
+
+	data[1] = data[1] & COMM_CALCCRC;
+
+	writeToSPI(data,2);
+	
+	//check num bytes in FIFO buffer
+	data[0] = data[1] = 0x0;
+	setAddr(data,REG_FIFOLEVEL);
+	setRead(data);
+	writeToSPI(data,3);
+	int j;
+	for(j=0;j<3;j++){
+		printf("FIFOLVL %i: %i\n",i,data[i]);
 	}
 
+return 0;
+	//collect 64 bytes of FIFO buffer
+	int i;
+	for(i=0;i<testBytesCount;i++){
+		writeToSPI(data, testBytesCount);	
+	}
 }
 
 int main(){
