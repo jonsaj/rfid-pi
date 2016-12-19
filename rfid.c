@@ -64,7 +64,7 @@ void selfTest(){
 		if(data) data += 0x1;
 		else data = 'A';
 		usleep(500000);
-	}	
+	} 
 }
 
 int main(){
@@ -74,7 +74,12 @@ int main(){
 		printf("SPI init failed!\n");
 		return 1;
 	}
-	selfTest();
+	// selfTest();
+	unsigned char data = 0x0;
+	wiringPiSPISetupRW(REG_VERSION, &data, 1);
+	printf("0x%02xCHIPTYPE: %2x, VERISION: %2x\n", data,data >> 4, data & 0xF);
+	wiringPiSPISetupRW(REG_VERSION, &data, 1);
+	printf("0x%02xCHIPTYPE: %2x, VERISION: %2x\n", data,data >> 4, data & 0xF);
 	return 0;
 }
 
